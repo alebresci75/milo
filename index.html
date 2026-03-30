@@ -180,22 +180,29 @@
         Be polite, concise, and helpful. Use Google Search for local tips.`;
 
         try {
-            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+            // Utilizzo del modello stabile gemini-1.5-flash
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: msg }] }],
-                    systemInstruction: { parts: [{ text: systemPrompt }] },
-                    tools: [{ "google_search": {} }]
+                    contents: [{ 
+                        role: "user",
+                        parts: [{ text: systemPrompt + "\n\nUser Question: " + msg }] 
+                    }]
                 })
             });
+            
+            if (!resp.ok) throw new Error('API Response Error');
+            
             const data = await resp.json();
             loader.remove();
-            const reply = data.candidates[0].content.parts[0].text;
+            
+            const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't process that.";
             addMessage(reply, 'bot');
         } catch (err) {
+            console.error(err);
             loader.remove();
-            addMessage("I'm sorry, I have a connection problem. Please try again later.", 'bot');
+            addMessage("I'm sorry, I have a connection problem. Please check if your API key is active or try again later.", 'bot');
         }
     }
 
