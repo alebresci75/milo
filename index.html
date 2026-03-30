@@ -116,7 +116,6 @@
 </div>
 
 <script>
-    // Chiave API con fatturazione attiva
     const apiKey = "AIzaSyBW0BfNQeQlGXC6iqq0KRZdU_7g8dV8Lcc";
     let currentLang = 'en';
 
@@ -158,36 +157,46 @@
         - Rispondi in ${currentLang}.
         - Sii sintetico e amichevole.`;
 
-        try {
-            // Passaggio a API v1 (stabile per account pay-as-you-go)
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-            
-            const response = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: systemPrompt + "\nDomanda: " + msg }] }]
-                })
-            });
+        // Tentiamo più combinazioni per risolvere l'errore 404 del modello
+        const endpoints = [
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
+        ];
 
-            const data = await response.json();
-            loader.remove();
+        let success = false;
+        let lastError = "";
 
-            if (response.ok) {
-                const resultText = data.candidates[0].content.parts[0].text;
-                addMessage(resultText, 'bot');
-            } else {
-                console.error("Dettaglio Errore:", data);
-                // Messaggio specifico per aiutare il debug
-                if (data.error && data.error.status === "PERMISSION_DENIED") {
-                    addMessage("La chiave è corretta ma Google sta ancora attivando il tuo account (potrebbe volerci qualche minuto dopo l'inserimento della carta). Riprova tra 5 minuti.", "bot");
+        for (const url of endpoints) {
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: systemPrompt + "\nDomanda: " + msg }] }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    loader.remove();
+                    const resultText = data.candidates[0].content.parts[0].text;
+                    addMessage(resultText, 'bot');
+                    success = true;
+                    break; 
                 } else {
-                    addMessage(`Nota di Milo: ${data.error ? data.error.message : 'Sto aggiornando i miei sistemi'}. Riprova tra un istante.`, 'bot');
+                    lastError = data.error ? data.error.message : "Errore sconosciuto";
+                    console.warn(`Tentativo fallito con URL: ${url}`, data);
                 }
+            } catch (err) {
+                console.error("Errore di rete durante il tentativo:", err);
             }
-        } catch (error) {
+        }
+
+        if (!success) {
             loader.remove();
-            addMessage("Milo ha un problema di connessione. Verifica che il sito non sia bloccato da un firewall o riprova.", 'bot');
+            addMessage(`Nota di Milo: Purtroppo Google restituisce ancora un errore (${lastError}). Assicurati che nel Google AI Studio la chiave non abbia restrizioni e che il modello 'Gemini 1.5 Flash' sia abilitato per il tuo progetto.`, 'bot');
         }
     }
 
