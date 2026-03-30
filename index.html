@@ -137,7 +137,7 @@
     const translations = {
         en: { welcome: "Welcome to Milan! ✨ I am Milo, Alessandra's virtual assistant. How can I help you today?", placeholder: "Ask Milo...", flag: "🇬🇧" },
         it: { welcome: "Benvenuto a Milano! ✨ Io sono Milo, l'assistente virtuale di Alessandra. Come posso aiutarti oggi?", placeholder: "Chiedi a Milo...", flag: "🇮🇹" },
-        es: { welcome: "¡Bienvenido a Milán! ✨ Soy Milo, el asistente virtual de Alessandra. ¿Cómo posso ayudarte?", placeholder: "Pregunta a Milo...", flag: "🇪🇸" },
+        es: { welcome: "¡Bienvenido a Milán! ✨ Soy Milo, l'asistente virtual de Alessandra. ¿Cómo puedo ayudarte?", placeholder: "Pregunta a Milo...", flag: "🇪🇸" },
         fr: { welcome: "Bienvenue à Milan ! ✨ Je suis Milo, l'assistant virtuel d'Alessandra. Comment puis-je vous aider ?", placeholder: "Demandez à Milo...", flag: "🇫🇷" }
     };
 
@@ -180,12 +180,15 @@
         Be polite, concise, and helpful. Use your knowledge to guide guests.`;
 
         try {
-            // Endpoint aggiornato per v1beta
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            // Aggiungiamo un timestamp per evitare cache dell'URL
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}&_=${Date.now()}`;
             
             const resp = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                mode: 'cors', // Forza esplicitamente CORS
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
                     contents: [
                         {
@@ -195,28 +198,26 @@
                     ],
                     generationConfig: {
                         temperature: 0.7,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 1024,
+                        maxOutputTokens: 800,
                     }
                 })
             });
             
             if (!resp.ok) {
                 const errorData = await resp.json();
-                console.error("API Error Detail:", errorData);
-                throw new Error(errorData.error?.message || 'API Response Error');
+                console.error("Dettaglio Errore API:", errorData);
+                throw new Error(errorData.error?.message || 'Errore risposta API');
             }
             
             const data = await resp.json();
             loader.remove();
             
-            const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't process that.";
+            const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Mi dispiace, non sono riuscito a elaborare la richiesta.";
             addMessage(reply, 'bot');
         } catch (err) {
-            console.error("Fetch Error:", err);
+            console.error("Errore Fetch:", err);
             loader.remove();
-            addMessage("I'm sorry, I have a connection problem. Please check if your API key is active or try again later.", 'bot');
+            addMessage("Ops! Milo ha un piccolo problema di connessione. Per favore, riprova tra un istante o ricarica la pagina.", 'bot');
         }
     }
 
