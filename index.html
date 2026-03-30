@@ -149,43 +149,49 @@
 
         const loader = addMessage('<div class="flex gap-1"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', 'bot');
 
-        // Prompt aggiornato con la conoscenza specifica del file house_context_info.md
-        const systemPrompt = `Sei Milo, il concierge virtuale elegante e ospitale dell'appartamento "Bright 21" in via Sammartini a Milano. Proprietaria: Alessandra.
+        const systemPrompt = `Sei Milo, il concierge virtuale dell'appartamento "Bright 21" in via Sammartini a Milano. Proprietaria: Alessandra.
         INFO CASA:
-        - Wi-Fi: Credenziali su un foglio plastificato in soggiorno. C'è un QR Code per connettersi subito.
-        - ZONA: Vicino alla Stazione Centrale.
+        - Wi-Fi: Credenziali su un foglio plastificato in soggiorno. C'è un QR Code.
+        - ZONA: Stazione Centrale.
         REGOLE:
         - Rispondi in ${currentLang}.
-        - Sii sintetico, accogliente e amichevole.
-        - Per consigli su cibo/spesa, suggerisci posti vicini alla Stazione Centrale.`;
+        - Sii sintetico e amichevole.`;
 
-        try {
-            // Utilizzo dell'endpoint v1 e nome modello completo
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-            
-            const response = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ 
-                        parts: [{ text: systemPrompt + "\nDomanda dell'ospite: " + msg }] 
-                    }]
-                })
-            });
+        // Proviamo una lista di modelli nel caso uno non sia attivo per la tua chiave
+        const models = ["gemini-1.5-flash", "gemini-pro", "gemini-1.5-pro"];
+        let success = false;
 
-            const data = await response.json();
-            loader.remove();
+        for (const modelName of models) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: systemPrompt + "\nDomanda: " + msg }] }]
+                    })
+                });
 
-            if (response.ok) {
-                const resultText = data.candidates[0].content.parts[0].text;
-                addMessage(resultText, 'bot');
-            } else {
-                console.error("Dettaglio Errore:", data);
-                addMessage(`Errore ${response.status}: ${data.error ? data.error.message : 'Modello non trovato'}. Prova a controllare il nome del modello su Google AI Studio.`, 'bot');
+                const data = await response.json();
+
+                if (response.ok) {
+                    loader.remove();
+                    const resultText = data.candidates[0].content.parts[0].text;
+                    addMessage(resultText, 'bot');
+                    success = true;
+                    break; 
+                } else {
+                    console.warn(`Modello ${modelName} non disponibile, provo il prossimo...`);
+                }
+            } catch (err) {
+                console.error(`Errore con ${modelName}:`, err);
             }
-        } catch (error) {
+        }
+
+        if (!success) {
             loader.remove();
-            addMessage("Errore di rete. Verifica la connessione o riprova tra poco.", 'bot');
+            addMessage("Milo non riesce a connettersi ai server di Google. Per favore, controlla che la chiave API sia corretta e attiva su Google AI Studio.", 'bot');
         }
     }
 
