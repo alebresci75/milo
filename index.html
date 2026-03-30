@@ -118,7 +118,6 @@
 </div>
 
 <script>
-    // Chiave API Gemini
     const apiKey = "AIzaSyBW0BfNQeQlGXC6iqq0KRZdU_7g8dV8Lcc"; 
     let currentLang = 'en';
 
@@ -152,24 +151,27 @@
 
         const loader = addMessage('<div class="flex gap-1"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', 'bot');
 
-        const systemPrompt = `Sei Milo, il concierge virtuale per "Bright 21" in via Sammartini 21, Milano. Host: Alessandra.
-        INFO IMPORTANTI:
-        - Wi-Fi: Dettagli sul foglio plastificato in soggiorno con QR Code.
-        - Check-out: Seguire le istruzioni nel manuale.
+        const systemPrompt = `Sei Milo, concierge elegante di "Bright 21" in via Sammartini 21, Milano. Host: Alessandra.
+        - Wi-Fi: Istruzioni sul foglio plastificato in soggiorno (inquadra il QR Code).
         - Lingua: Rispondi in ${currentLang}.
-        - Stile: Molto accogliente, professionale e breve.`;
+        - Stile: Molto accogliente e breve.`;
 
-        // Proviamo la versione stabile 'v1' che è richiesta per molti account a pagamento
-        const endpoints = [
-            `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+        // ELENCO DEFINITIVO DI TUTTE LE POSSIBILI COMBINAZIONI (Dalla più moderna alla più vecchia)
+        const variants = [
+            { ver: 'v1', mod: 'gemini-1.5-flash' },
+            { ver: 'v1beta', mod: 'gemini-1.5-flash' },
+            { ver: 'v1', mod: 'gemini-1.5-flash-002' },
+            { ver: 'v1', mod: 'gemini-pro' }, // La versione "salvavita"
+            { ver: 'v1beta', mod: 'gemini-pro' }
         ];
 
         let success = false;
         let lastError = "";
 
-        for (let url of endpoints) {
+        for (const variant of variants) {
             try {
+                const url = `https://generativelanguage.googleapis.com/${variant.ver}/models/${variant.mod}:generateContent?key=${apiKey}`;
+                
                 const response = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -187,17 +189,16 @@
                     success = true;
                     break;
                 } else {
-                    lastError = data.error ? data.error.message : "errore sconosciuto";
-                    console.error("Tentativo fallito:", url, data);
+                    lastError = `${variant.mod} (${variant.ver}): ${data.error ? data.error.message : 'Unknown'}`;
                 }
-            } catch (error) {
-                lastError = "connessione fallita";
+            } catch (err) {
+                lastError = "Network error";
             }
         }
 
         if (!success) {
             loader.remove();
-            addMessage(`Milo: Sto ancora sincronizzando i miei sistemi con Google (Errore: ${lastError}). Per gli account a pagamento, Google richiede a volte qualche minuto extra per propagare i permessi. Riprova tra 60 secondi!`, 'bot');
+            addMessage(`Milo: Sto ancora cercando di connettermi con Google. (Dettaglio: ${lastError}). Se l'errore dice ancora "not found", è probabile che Google stia ancora finendo di attivare la tua chiave sul piano a pagamento. Riprova tra 5 minuti netti.`, 'bot');
         }
     }
 
