@@ -116,7 +116,7 @@
 </div>
 
 <script>
-    // Nuova chiave API configurata con fatturazione
+    // Chiave API con fatturazione attiva
     const apiKey = "AIzaSyBW0BfNQeQlGXC6iqq0KRZdU_7g8dV8Lcc";
     let currentLang = 'en';
 
@@ -159,8 +159,8 @@
         - Sii sintetico e amichevole.`;
 
         try {
-            // Utilizziamo l'endpoint v1beta con il modello specifico, che è il più affidabile
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            // Passaggio a API v1 (stabile per account pay-as-you-go)
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             
             const response = await fetch(url, {
                 method: "POST",
@@ -178,11 +178,16 @@
                 addMessage(resultText, 'bot');
             } else {
                 console.error("Dettaglio Errore:", data);
-                addMessage(`Errore ${response.status}: ${data.error ? data.error.message : 'Problema di configurazione'}. Per favore, riprova tra poco.`, 'bot');
+                // Messaggio specifico per aiutare il debug
+                if (data.error && data.error.status === "PERMISSION_DENIED") {
+                    addMessage("La chiave è corretta ma Google sta ancora attivando il tuo account (potrebbe volerci qualche minuto dopo l'inserimento della carta). Riprova tra 5 minuti.", "bot");
+                } else {
+                    addMessage(`Nota di Milo: ${data.error ? data.error.message : 'Sto aggiornando i miei sistemi'}. Riprova tra un istante.`, 'bot');
+                }
             }
         } catch (error) {
             loader.remove();
-            addMessage("Errore di connessione. Verifica di essere online e riprova.", 'bot');
+            addMessage("Milo ha un problema di connessione. Verifica che il sito non sia bloccato da un firewall o riprova.", 'bot');
         }
     }
 
