@@ -116,7 +116,8 @@
 </div>
 
 <script>
-    const apiKey = "AIzaSyDIY6SPxJRHryZ-9FWTBE_te-bKXEn2TfM";
+    // Nuova chiave API configurata con fatturazione
+    const apiKey = "AIzaSyBW0BfNQeQlGXC6iqq0KRZdU_7g8dV8Lcc";
     let currentLang = 'en';
 
     function toggleLang() { document.getElementById('lang-menu').classList.toggle('hidden'); }
@@ -157,41 +158,31 @@
         - Rispondi in ${currentLang}.
         - Sii sintetico e amichevole.`;
 
-        // Proviamo una lista di modelli nel caso uno non sia attivo per la tua chiave
-        const models = ["gemini-1.5-flash", "gemini-pro", "gemini-1.5-pro"];
-        let success = false;
+        try {
+            // Utilizziamo l'endpoint v1beta con il modello specifico, che è il più affidabile
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: systemPrompt + "\nDomanda: " + msg }] }]
+                })
+            });
 
-        for (const modelName of models) {
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-                
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: systemPrompt + "\nDomanda: " + msg }] }]
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    loader.remove();
-                    const resultText = data.candidates[0].content.parts[0].text;
-                    addMessage(resultText, 'bot');
-                    success = true;
-                    break; 
-                } else {
-                    console.warn(`Modello ${modelName} non disponibile, provo il prossimo...`);
-                }
-            } catch (err) {
-                console.error(`Errore con ${modelName}:`, err);
-            }
-        }
-
-        if (!success) {
+            const data = await response.json();
             loader.remove();
-            addMessage("Milo non riesce a connettersi ai server di Google. Per favore, controlla che la chiave API sia corretta e attiva su Google AI Studio.", 'bot');
+
+            if (response.ok) {
+                const resultText = data.candidates[0].content.parts[0].text;
+                addMessage(resultText, 'bot');
+            } else {
+                console.error("Dettaglio Errore:", data);
+                addMessage(`Errore ${response.status}: ${data.error ? data.error.message : 'Problema di configurazione'}. Per favore, riprova tra poco.`, 'bot');
+            }
+        } catch (error) {
+            loader.remove();
+            addMessage("Errore di connessione. Verifica di essere online e riprova.", 'bot');
         }
     }
 
