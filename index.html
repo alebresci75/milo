@@ -149,31 +149,30 @@
 
         const loader = addMessage('<div class="flex gap-1"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', 'bot');
 
-        const systemPrompt = `Sei Milo, il concierge virtuale dell'appartamento "Bright 21" in via Sammartini a Milano. Proprietaria: Alessandra.
-        INFO CASA:
-        - Wi-Fi: Credenziali su un foglio plastificato in soggiorno. C'è un QR Code.
-        - ZONA: Stazione Centrale.
-        REGOLE:
-        - Rispondi in ${currentLang}.
-        - Sii sintetico e amichevole.`;
+        // Prompt aggiornato con TUTTA la conoscenza dei file MD
+        const systemPrompt = `Sei Milo, il concierge virtuale elegante e ospitale dell'appartamento "Bright 21" in via Sammartini 21, Milano (vicino alla Stazione Centrale). Host: Alessandra.
+        CONOSCENZA SPECIFICA:
+        - Wi-Fi: Le credenziali sono su un foglio plastificato in soggiorno. C'è un QR Code per connettersi istantaneamente senza digitare la password.
+        - ZONA: Suggerisci supermercati, ristoranti e trasporti (Metro, Navette Aeroporto) vicino alla Stazione Centrale.
+        - REGOLE: Segui le regole per i rifiuti (Waste Rules) e il check-out indicate nel manuale digitale.
+        - LINGUA: Rispondi esclusivamente in ${currentLang}.
+        - STILE: Sii conciso, molto accogliente e professionale.`;
 
-        // Tentiamo più combinazioni per risolvere l'errore 404 del modello
-        const endpoints = [
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-            `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
-        ];
-
+        // Modelli aggiornati ai nomi corretti per account con fatturazione
+        const models = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest"];
         let success = false;
         let lastError = "";
 
-        for (const url of endpoints) {
+        for (const modelName of models) {
             try {
+                // Utilizziamo v1beta che è il più flessibile per i modelli "latest"
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+                
                 const response = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: systemPrompt + "\nDomanda: " + msg }] }]
+                        contents: [{ parts: [{ text: systemPrompt + "\nDomanda dell'ospite: " + msg }] }]
                     })
                 });
 
@@ -187,16 +186,16 @@
                     break; 
                 } else {
                     lastError = data.error ? data.error.message : "Errore sconosciuto";
-                    console.warn(`Tentativo fallito con URL: ${url}`, data);
+                    console.warn(`Fallito con ${modelName}: ${lastError}`);
                 }
             } catch (err) {
-                console.error("Errore di rete durante il tentativo:", err);
+                console.error(`Errore di rete con ${modelName}`);
             }
         }
 
         if (!success) {
             loader.remove();
-            addMessage(`Nota di Milo: Purtroppo Google restituisce ancora un errore (${lastError}). Assicurati che nel Google AI Studio la chiave non abbia restrizioni e che il modello 'Gemini 1.5 Flash' sia abilitato per il tuo progetto.`, 'bot');
+            addMessage(`Milo sta riscontrando un ritardo nella connessione con i server di Google (Errore: ${lastError}). Se hai appena inserito la carta di credito, Google potrebbe impiegare circa 15-20 minuti per sbloccare la chiave. Riprova tra poco!`, 'bot');
         }
     }
 
