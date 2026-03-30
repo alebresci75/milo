@@ -109,7 +109,7 @@
 
     <div class="p-4 bg-white border-t pb-8">
         <form onsubmit="handleSend(event)" class="flex gap-2">
-            <input type="text" id="user-input" placeholder="Ask Milo..." class="flex-1 bg-gray-100 rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-yellow-400">
+            <input type="text" id="user-input" placeholder="Chiedi a Milo..." class="flex-1 bg-gray-100 rounded-2xl px-5 py-3 outline-none focus:ring-2 focus:ring-yellow-400">
             <button type="submit" class="bg-yellow-400 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-md">
                 <i class="fas fa-paper-plane"></i>
             </button>
@@ -140,7 +140,6 @@
         return div;
     }
 
-    // Funzione di utilità per attendere tra i tentativi
     const sleep = ms => new Promise(res => setTimeout(res, ms));
 
     async function handleSend(e) {
@@ -159,11 +158,11 @@
         - Lingua: Rispondi in ${currentLang}.
         - Stile: Molto accogliente e breve.`;
 
-        // Elenco combinazioni con l'aggiunta della versione 8b (molto più scattante e spesso libera da blocchi)
+        // Strategia multi-modello basata sui tuoi log di errore
         const variants = [
-            { ver: 'v1', mod: 'gemini-1.5-flash-8b' }, 
+            { ver: 'v1beta', mod: 'gemini-1.5-flash' }, 
             { ver: 'v1', mod: 'gemini-1.5-flash' },
-            { ver: 'v1beta', mod: 'gemini-1.5-flash' },
+            { ver: 'v1', mod: 'gemini-1.5-flash-8b' },
             { ver: 'v1', mod: 'gemini-pro' }
         ];
 
@@ -171,46 +170,38 @@
         let lastError = "";
 
         for (const variant of variants) {
-            // Proviamo ogni variante fino a 2 volte in caso di instabilità temporanea (visto il grafico)
-            for (let retry = 0; retry < 2; retry++) {
-                try {
-                    const url = `https://generativelanguage.googleapis.com/${variant.ver}/models/${variant.mod}:generateContent?key=${apiKey}`;
-                    
-                    const response = await fetch(url, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: systemPrompt + "\nOspite chiede: " + msg }] }]
-                        })
-                    });
+            try {
+                const url = `https://generativelanguage.googleapis.com/${variant.ver}/models/${variant.mod}:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: systemPrompt + "\nDomanda dell'ospite: " + msg }] }]
+                    })
+                });
 
-                    const data = await response.json();
+                const data = await response.json();
 
-                    if (response.ok) {
-                        loader.remove();
-                        const resultText = data.candidates[0].content.parts[0].text;
-                        addMessage(resultText, 'bot');
-                        success = true;
-                        break;
-                    } else {
-                        lastError = `${variant.mod}: ${data.error ? data.error.message : 'Unknown'}`;
-                        if (response.status === 404 || response.status === 403) {
-                            // Se è un errore di permessi o modello non trovato, passiamo subito alla variante successiva
-                            break; 
-                        }
-                        await sleep(1000); // Se è un altro errore, aspetta un secondo e riprova
-                    }
-                } catch (err) {
-                    lastError = "Network connection issue";
-                    await sleep(1000);
+                if (response.ok) {
+                    loader.remove();
+                    const resultText = data.candidates[0].content.parts[0].text;
+                    addMessage(resultText, 'bot');
+                    success = true;
+                    break;
+                } else {
+                    lastError = `${variant.mod} (${variant.ver}): ${data.error ? data.error.message : 'Unknown'}`;
+                    // Se riceve 403 o 404, non riprovare questa variante e passa alla prossima
+                    console.warn("Milo tentativi log:", lastError);
                 }
+            } catch (err) {
+                lastError = "Errore di connessione";
             }
-            if (success) break;
         }
 
         if (!success) {
             loader.remove();
-            addMessage(`Milo: Google sta ancora limitando il mio accesso (Ultimo errore: ${lastError}). Come mostrano i grafici della tua console, il 90% delle richieste viene bloccato dai server Google. Ti prego di riprovare tra qualche minuto, è solo questione di attivazione definitiva del piano.`, 'bot');
+            addMessage(`Milo: Sto riscontrando dei ritardi nell'attivazione del mio servizio da parte di Google. (Ultimo log: ${lastError}). Come indicano i tuoi grafici, Google sta ancora terminando la verifica del mio accesso. Ti chiedo scusa e ti prego di riprovare tra un istante.`, 'bot');
         }
     }
 
