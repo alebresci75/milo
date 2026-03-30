@@ -118,7 +118,7 @@
 </div>
 
 <script>
-    // Inserisci qui la chiave che vedi nello screenshot (...2TfM)
+    // Chiave API Gemini
     const apiKey = "AIzaSyBW0BfNQeQlGXC6iqq0KRZdU_7g8dV8Lcc"; 
     let currentLang = 'en';
 
@@ -159,32 +159,45 @@
         - Lingua: Rispondi in ${currentLang}.
         - Stile: Molto accogliente, professionale e breve.`;
 
-        try {
-            // Utilizziamo l'endpoint v1beta con il nome modello base, il più compatibile in fase di transizione account
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-            
-            const response = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: systemPrompt + "\nOspite chiede: " + msg }] }]
-                })
-            });
+        // Proviamo la versione stabile 'v1' che è richiesta per molti account a pagamento
+        const endpoints = [
+            `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+        ];
 
-            const data = await response.json();
-            loader.remove();
+        let success = false;
+        let lastError = "";
 
-            if (response.ok) {
-                const resultText = data.candidates[0].content.parts[0].text;
-                addMessage(resultText, 'bot');
-            } else {
-                console.error("Dettaglio Errore:", data);
-                let errorMsg = data.error ? data.error.message : "piccolo intoppo tecnico";
-                addMessage(`Milo: Sto finendo di configurare la mia memoria con Google (Errore: ${errorMsg}). Di solito ci vogliono 10 minuti dopo l'attivazione della carta. Riprova tra un istante!`, 'bot');
+        for (let url of endpoints) {
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: systemPrompt + "\nOspite chiede: " + msg }] }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    loader.remove();
+                    const resultText = data.candidates[0].content.parts[0].text;
+                    addMessage(resultText, 'bot');
+                    success = true;
+                    break;
+                } else {
+                    lastError = data.error ? data.error.message : "errore sconosciuto";
+                    console.error("Tentativo fallito:", url, data);
+                }
+            } catch (error) {
+                lastError = "connessione fallita";
             }
-        } catch (error) {
+        }
+
+        if (!success) {
             loader.remove();
-            addMessage("Milo ha perso la connessione. Controlla la tua rete e riprova.", 'bot');
+            addMessage(`Milo: Sto ancora sincronizzando i miei sistemi con Google (Errore: ${lastError}). Per gli account a pagamento, Google richiede a volte qualche minuto extra per propagare i permessi. Riprova tra 60 secondi!`, 'bot');
         }
     }
 
