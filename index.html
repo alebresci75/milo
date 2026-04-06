@@ -118,7 +118,6 @@
 </div>
 
 <script>
-    // CHIAVE API GROQ ATTIVA
     const groqKey = "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"; 
     let currentLang = 'en';
 
@@ -156,18 +155,29 @@
 
         const loader = addMessage('<div class="flex gap-1"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>', 'bot');
 
-        // KNOWLEDGE BASE DI MILO
-        const systemPrompt = `Sei Milo, concierge virtuale di "Bright 21" in via Sammartini, Milano. Host: Alessandra.
-        RISPONDI SEMPRE IN ${currentLang}. Tono: elegante, accogliente e breve.
-        
-        INFO CASA:
-        - WI-FI: Foglio plastificato in soggiorno con QR Code (connessione istantanea).
-        - CHECK-OUT: Ore 10:00.
-        - POSIZIONE: Via Sammartini (dietro Stazione Centrale).
-        - REGOLE: Brevità nelle risposte. Se non sai qualcosa, consiglia di contattare Alessandra via app.`;
+        const systemPrompt = `Sei Milo, il concierge virtuale di "Bright 21", un luminoso monolocale di 32mq situato in Via Sammartini 21, Milano. La tua Host è Alessandra.
+        RISPONDI SEMPRE IN ${currentLang}. Il tuo tono deve essere elegante, moderno, funzionale e molto accogliente, rispecchiando lo stile dell'alloggio.
+
+        KNOWLEDGE BASE APPARTAMENTO:
+        - CARATTERISTICHE: 3° piano senza ascensore (salita leggera), 4 finestre con doppia esposizione, doppi vetri per massimo silenzio, cortile interno tranquillo.
+        - DOTAZIONI: Smart TV (Netflix, Prime, YouTube), Amazon Alexa, Impianto di illuminazione cromatica, Climatizzazione (caldo/freddo), Lavatrice in bagno.
+        - WI-FI: Fibra ottica illimitata. Credenziali su foglio plastificato in soggiorno con QR Code per connessione istantanea.
+        - CUCINA: Completa di tutto, macchina del caffè inclusa.
+        - REGOLE: Check-out entro le ore 10:00. Differenziata AMSA dietro la porta della cucina.
+
+        LOGISTICA TRASPORTI (PRECISIONE MASSIMA):
+        - METRO PER DUOMO: Dalla Stazione Centrale (2 min a piedi) prendere M3 GIALLA. Fermate: Centrale -> Repubblica -> Turati -> Montenapoleone -> Duomo. (Circa 10 min).
+        - AEROPORTO MALPENSA (MXP): Treno Malpensa Express per Milano Centrale (40 min) o Bus navetta (45 min).
+        - AEROPORTO LINATE (LIN): Bus 73 o navette dirette per Stazione Centrale (30 min).
+        - AEROPORTO ORIO AL SERIO (BGY): Bus diretto per Milano Centrale (1 ora).
+        - APP CONSIGLIATE: Moovit o Citymapper per orari in tempo reale.
+
+        SERVIZI DI ZONA:
+        Supermercati, banche, bar e ristoranti sono tutti in Via Sammartini o nelle immediate vicinanze della Stazione Centrale.
+
+        Se l'ospite chiede qualcosa non specificato, invita cordialmente a contattare Alessandra tramite la piattaforma di prenotazione.`;
 
         try {
-            // Chiamata API a Groq (molto più affidabile al momento)
             const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -180,7 +190,7 @@
                         { role: "system", content: systemPrompt },
                         { role: "user", content: msg }
                     ],
-                    temperature: 0.5
+                    temperature: 0.6
                 })
             });
 
@@ -188,10 +198,9 @@
             loader.remove();
 
             if (response.ok) {
-                const resultText = data.choices[0].message.content;
-                addMessage(resultText, 'bot');
+                addMessage(data.choices[0].message.content, 'bot');
             } else {
-                addMessage("Milo: Sto aggiornando i miei sistemi. Riprova tra un istante o contatta Alessandra.", "bot");
+                addMessage("Milo: Sto aggiornando le mie mappe. Riprova tra un istante.", "bot");
             }
         } catch (err) {
             loader.remove();
